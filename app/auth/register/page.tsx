@@ -2,16 +2,15 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle } from "lucide-react"
-import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -19,93 +18,50 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
-  const [configError, setConfigError] = useState("")
   const router = useRouter()
-
-  // Check Supabase configuration on component mount
-  useEffect(() => {
-    try {
-      createClient()
-    } catch (err) {
-      setConfigError(err instanceof Error ? err.message : "Supabase configuration error")
-    }
-  }, [])
+  const { toast } = useToast()
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError("")
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
-      setLoading(false)
       return
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
+
+    setLoading(true)
+
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        setSuccess(true)
+      if (signUpError) {
+        setError(signUpError.message)
+        return
+      }
+
+      if (data.user) {
+        toast({
+          title: "Success",
+          description: "Account created successfully. Please log in.",
+        })
+        router.push("/auth/login")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError("An unexpected error occurred")
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
-
-  if (configError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <CardTitle className="text-2xl font-bold text-red-600">Configuration Error</CardTitle>
-            <CardDescription>Supabase is not properly configured</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert variant="destructive">
-              <AlertDescription className="text-sm">{configError}</AlertDescription>
-            </Alert>
-            <div className="mt-4 text-sm text-gray-600">
-              <p className="font-semibold mb-2">To fix this issue:</p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Set up Supabase integration using the integration panel</li>
-                <li>Or manually add your Supabase credentials to environment variables</li>
-                <li>Refresh the page after configuration</li>
-              </ol>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
-            <CardDescription>
-              We've sent you a confirmation link. Please check your email to activate your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push("/auth/login")} className="w-full">
-              Go to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   return (
@@ -113,49 +69,64 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-          <CardDescription>Sign up for Family Tree</CardDescription>
+          <CardDescription>Join Family Tree to get started</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleRegister} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm Password
+              </label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
                 required
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
+          <p className="text-sm text-gray-600 text-center mt-4">
             Already have an account?{" "}
             <Link href="/auth/login" className="text-blue-600 hover:underline">
-              Sign in
+              Sign in here
             </Link>
-          </div>
+          </p>
         </CardContent>
       </Card>
     </div>

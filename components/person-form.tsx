@@ -2,361 +2,209 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useRef } from "react"
 import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, X, Upload } from "lucide-react"
-
-interface Person {
-  id: string
-  first_name: string
-  last_name: string
-  date_of_birth?: string
-  date_of_death?: string
-  marriage_date?: string
-  profile_picture?: string
-  special_occasions?: any[]
-  parent_id?: string
-  spouse_id?: string
-  created_at: string
-}
-
-interface PersonFormProps {
-  person?: Person | null
-  onSave: () => void
-  people: Person[]
-}
+import { Upload, Plus, Trash2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface SpecialOccasion {
-  id: string
-  name: string
   date: string
-  description?: string
+  title: string
 }
 
-export default function PersonForm({ person, onSave, people }: PersonFormProps) {
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    date_of_birth: "",
-    date_of_death: "",
-    marriage_date: "",
-    parent_id: "",
-    spouse_id: "",
-  })
+export default function PersonForm({
+  userId,
+  onPersonAdded,
+}: {
+  userId: string
+  onPersonAdded: () => void
+}) {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [dateOfDeath, setDateOfDeath] = useState("")
+  const [marriageDate, setMarriageDate] = useState("")
   const [specialOccasions, setSpecialOccasions] = useState<SpecialOccasion[]>([])
   const [profilePicture, setProfilePicture] = useState<File | null>(null)
-  const [profilePictureUrl, setProfilePictureUrl] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const supabase = createClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    if (person) {
-      setFormData({
-        first_name: person.first_name || "",
-        last_name: person.last_name || "",
-        date_of_birth: person.date_of_birth || "",
-        date_of_death: person.date_of_death || "",
-        marriage_date: person.marriage_date || "",
-        parent_id: person.parent_id || "",
-        spouse_id: person.spouse_id || "",
-      })
-      setSpecialOccasions(person.special_occasions || [])
-      setProfilePictureUrl(person.profile_picture || "")
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setProfilePicture(e.target.files[0])
     }
-  }, [person])
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const addSpecialOccasion = () => {
-    const newOccasion: SpecialOccasion = {
-      id: Date.now().toString(),
-      name: "",
-      date: "",
-      description: "",
-    }
-    setSpecialOccasions((prev) => [...prev, newOccasion])
+    setSpecialOccasions([...specialOccasions, { date: "", title: "" }])
   }
 
-  const updateSpecialOccasion = (id: string, field: string, value: string) => {
-    setSpecialOccasions((prev) =>
-      prev.map((occasion) => (occasion.id === id ? { ...occasion, [field]: value } : occasion)),
-    )
+  const updateSpecialOccasion = (index: number, field: string, value: string) => {
+    const updated = [...specialOccasions]
+    updated[index] = { ...updated[index], [field]: value }
+    setSpecialOccasions(updated)
   }
 
-  const removeSpecialOccasion = (id: string) => {
-    setSpecialOccasions((prev) => prev.filter((occasion) => occasion.id !== id))
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setProfilePicture(file)
-      const url = URL.createObjectURL(file)
-      setProfilePictureUrl(url)
-    }
-  }
-
-  const uploadProfilePicture = async (): Promise<string | null> => {
-    if (!profilePicture) return profilePictureUrl
-
-    const fileExt = profilePicture.name.split(".").pop()
-    const fileName = `${Date.now()}.${fileExt}`
-    const filePath = `profile-pictures/${fileName}`
-
-    const { error: uploadError } = await supabase.storage.from("family-tree").upload(filePath, profilePicture)
-
-    if (uploadError) {
-      console.error("Error uploading file:", uploadError)
-      return null
-    }
-
-    const { data } = supabase.storage.from("family-tree").getPublicUrl(filePath)
-
-    return data.publicUrl
+  const removeSpecialOccasion = (index: number) => {
+    setSpecialOccasions(specialOccasions.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError("")
 
     try {
-      let pictureUrl = profilePictureUrl
+      const supabase = createClient()
+      let profilePictureUrl = null
+
+      // Upload profile picture if provided
       if (profilePicture) {
-        pictureUrl = await uploadProfilePicture()
-        if (!pictureUrl) {
-          setError("Failed to upload profile picture")
-          setLoading(false)
-          return
-        }
+        const fileExt = profilePicture.name.split(".").pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const { data, error: uploadError } = await supabase.storage
+          .from("profile-pictures")
+          .upload(`${userId}/${fileName}`, profilePicture)
+
+        if (uploadError) throw uploadError
+
+        const { data: publicUrlData } = supabase.storage.from("profile-pictures").getPublicUrl(`${userId}/${fileName}`)
+
+        profilePictureUrl = publicUrlData.publicUrl
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        setError("User not authenticated")
-        setLoading(false)
-        return
-      }
+      // Insert person record
+      const { error } = await supabase.from("people").insert([
+        {
+          user_id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          date_of_birth: dateOfBirth || null,
+          date_of_death: dateOfDeath || null,
+          marriage_date: marriageDate || null,
+          profile_picture_url: profilePictureUrl,
+          special_occasions: specialOccasions.length > 0 ? JSON.stringify(specialOccasions) : null,
+        },
+      ])
 
-      const personData = {
-        ...formData,
-        profile_picture: pictureUrl,
-        special_occasions: specialOccasions,
-        user_id: user.id,
-      }
+      if (error) throw error
 
-      let result
-      if (person) {
-        result = await supabase.from("people").update(personData).eq("id", person.id)
-      } else {
-        result = await supabase.from("people").insert([personData])
-      }
+      toast({
+        title: "Success",
+        description: "Family member added successfully",
+      })
 
-      if (result.error) {
-        setError(result.error.message)
-      } else {
-        onSave()
-      }
-    } catch (err) {
-      setError("An unexpected error occurred")
+      // Reset form
+      setFirstName("")
+      setLastName("")
+      setDateOfBirth("")
+      setDateOfDeath("")
+      setMarriageDate("")
+      setSpecialOccasions([])
+      setProfilePicture(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+
+      onPersonAdded()
+    } catch (error) {
+      console.error("Error adding person:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add family member",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
-  const availableParents = people.filter((p) => p.id !== person?.id)
-  const availableSpouses = people.filter((p) => p.id !== person?.id && p.id !== formData.parent_id)
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="first_name">First Name *</Label>
-          <Input
-            id="first_name"
-            value={formData.first_name}
-            onChange={(e) => handleInputChange("first_name", e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="last_name">Last Name *</Label>
-          <Input
-            id="last_name"
-            value={formData.last_name}
-            onChange={(e) => handleInputChange("last_name", e.target.value)}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="profile_picture">Profile Picture</Label>
-        <div className="flex items-center space-x-4">
-          {profilePictureUrl && (
-            <img
-              src={profilePictureUrl || "/placeholder.svg"}
-              alt="Profile preview"
-              className="w-16 h-16 rounded-full object-cover"
-            />
-          )}
-          <div className="flex-1">
-            <Input id="profile_picture" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-            <Button type="button" variant="outline" onClick={() => document.getElementById("profile_picture")?.click()}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Picture
-            </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle>Add Family Member</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+              <Input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" required />
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="date_of_birth">Date of Birth</Label>
-          <Input
-            id="date_of_birth"
-            type="date"
-            value={formData.date_of_birth}
-            onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="date_of_death">Date of Death</Label>
-          <Input
-            id="date_of_death"
-            type="date"
-            value={formData.date_of_death}
-            onChange={(e) => handleInputChange("date_of_death", e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="marriage_date">Marriage Date</Label>
-          <Input
-            id="marriage_date"
-            type="date"
-            value={formData.marriage_date}
-            onChange={(e) => handleInputChange("marriage_date", e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="parent_id">Parent</Label>
-          <Select value={formData.parent_id} onValueChange={(value) => handleInputChange("parent_id", value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select parent" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No parent</SelectItem>
-              {availableParents.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="spouse_id">Spouse</Label>
-          <Select value={formData.spouse_id} onValueChange={(value) => handleInputChange("spouse_id", value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select spouse" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No spouse</SelectItem>
-              {availableSpouses.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Special Occasions</CardTitle>
-            <Button type="button" variant="outline" size="sm" onClick={addSpecialOccasion}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Occasion
-            </Button>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+            <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {specialOccasions.map((occasion) => (
-            <div key={occasion.id} className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Special Occasion</h4>
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeSpecialOccasion(occasion.id)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Occasion Name</Label>
-                  <Input
-                    value={occasion.name}
-                    onChange={(e) => updateSpecialOccasion(occasion.id, "name", e.target.value)}
-                    placeholder="e.g., Graduation, Anniversary"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Date</Label>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Death</label>
+            <Input type="date" value={dateOfDeath} onChange={(e) => setDateOfDeath(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Marriage Date</label>
+            <Input type="date" value={marriageDate} onChange={(e) => setMarriageDate(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
+            <div className="flex gap-2">
+              <Input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="flex-1" />
+              <Button type="button" variant="outline">
+                <Upload className="h-4 w-4" />
+              </Button>
+            </div>
+            {profilePicture && <p className="text-sm text-green-600 mt-1">Selected: {profilePicture.name}</p>}
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">Special Occasions</label>
+              <Button type="button" variant="outline" size="sm" onClick={addSpecialOccasion}>
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {specialOccasions.map((occasion, index) => (
+                <div key={index} className="flex gap-2">
                   <Input
                     type="date"
                     value={occasion.date}
-                    onChange={(e) => updateSpecialOccasion(occasion.id, "date", e.target.value)}
+                    onChange={(e) => updateSpecialOccasion(index, "date", e.target.value)}
+                    className="flex-1"
                   />
+                  <Input
+                    value={occasion.title}
+                    onChange={(e) => updateSpecialOccasion(index, "title", e.target.value)}
+                    placeholder="Event title"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="destructive" size="icon" onClick={() => removeSpecialOccasion(index)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={occasion.description || ""}
-                  onChange={(e) => updateSpecialOccasion(occasion.id, "description", e.target.value)}
-                  placeholder="Optional description"
-                  rows={2}
-                />
-              </div>
+              ))}
             </div>
-          ))}
-          {specialOccasions.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-4">
-              No special occasions added yet. Click "Add Occasion" to get started.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
 
-      <div className="flex justify-end space-x-3">
-        <Button type="button" variant="outline" onClick={onSave}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : person ? "Update Person" : "Add Person"}
-        </Button>
-      </div>
-    </form>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Adding..." : "Add Family Member"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

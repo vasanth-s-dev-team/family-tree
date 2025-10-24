@@ -1,46 +1,52 @@
--- Create the people table
+-- Create people table
 CREATE TABLE IF NOT EXISTS people (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    date_of_birth DATE,
-    date_of_death DATE,
-    marriage_date DATE,
-    profile_picture TEXT,
-    special_occasions JSONB DEFAULT '[]'::jsonb,
-    parent_id UUID REFERENCES people(id) ON DELETE SET NULL,
-    spouse_id UUID REFERENCES people(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  date_of_birth DATE,
+  date_of_death DATE,
+  marriage_date DATE,
+  profile_picture_url TEXT,
+  parent_id UUID REFERENCES people(id) ON DELETE SET NULL,
+  spouse_id UUID REFERENCES people(id) ON DELETE SET NULL,
+  special_occasions JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_people_user_id ON people(user_id);
-CREATE INDEX IF NOT EXISTS idx_people_parent_id ON people(parent_id);
-CREATE INDEX IF NOT EXISTS idx_people_spouse_id ON people(spouse_id);
+-- Create index on user_id for faster queries
+CREATE INDEX idx_people_user_id ON people(user_id);
+CREATE INDEX idx_people_parent_id ON people(parent_id);
+CREATE INDEX idx_people_spouse_id ON people(spouse_id);
 
--- Enable Row Level Security
+-- Enable RLS on people table
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 
--- Create policy to allow users to only see their own family members
-CREATE POLICY "Users can only see their own family members" ON people
-    FOR ALL USING (auth.uid() = user_id);
+-- Create RLS policy - users can only see their own family members
+CREATE POLICY "Users can view their own family members" ON people
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Create RLS policy - users can only insert their own family members
+CREATE POLICY "Users can insert their own family members" ON people
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Create RLS policy - users can only update their own family members
+CREATE POLICY "Users can update their own family members" ON people
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Create RLS policy - users can only delete their own family members
+CREATE POLICY "Users can delete their own family members" ON people
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- Create storage bucket for profile pictures
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('family-tree', 'family-tree', true)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('profile-pictures', 'profile-pictures', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Create policy for storage bucket
-CREATE POLICY "Users can upload their own profile pictures" ON storage.objects
-    FOR INSERT WITH CHECK (bucket_id = 'family-tree' AND auth.uid()::text = (storage.foldername(name))[1]);
+-- Create RLS policy for storage
+CREATE POLICY "Users can upload profile pictures" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'profile-pictures' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 CREATE POLICY "Users can view profile pictures" ON storage.objects
-    FOR SELECT USING (bucket_id = 'family-tree');
-
-CREATE POLICY "Users can update their own profile pictures" ON storage.objects
-    FOR UPDATE USING (bucket_id = 'family-tree' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can delete their own profile pictures" ON storage.objects
-    FOR DELETE USING (bucket_id = 'family-tree' AND auth.uid()::text = (storage.foldername(name))[1]);
+  FOR SELECT USING (bucket_id = 'profile-pictures');
