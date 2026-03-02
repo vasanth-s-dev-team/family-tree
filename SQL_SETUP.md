@@ -14,7 +14,7 @@ Copy and paste this entire SQL code into your Supabase SQL Editor and run it.
 
 ---
 
-```sql
+\`\`\`sql
 -- Create people table
 CREATE TABLE IF NOT EXISTS people (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -93,7 +93,7 @@ CREATE POLICY "Profile pictures are publicly readable"
   ON storage.objects
   FOR SELECT
   USING (bucket_id = 'profile-pictures');
-```
+\`\`\`
 
 ---
 

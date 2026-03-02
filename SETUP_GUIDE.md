@@ -34,10 +34,10 @@ The SQL script will:
 
 Your `.env.local` file should contain your Supabase credentials:
 
-```env
+\`\`\`env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-```
+\`\`\`
 
 **To get these values:**
 1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
@@ -49,10 +49,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
 After updating environment variables:
 
-```bash
+\`\`\`bash
 # Stop the current server (Ctrl+C)
 npm run dev
-```
+\`\`\`
 
 ## Step 4: Test the Application
 

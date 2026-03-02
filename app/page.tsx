@@ -47,20 +47,36 @@ export default function HomePage() {
   }
 
   if (error) {
+    const isMissingEnvVars = error.includes("Supabase environment variables") || error.includes("Missing Supabase")
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Configuration Error</h1>
-          <p className="text-gray-700 mb-4">{error}</p>
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-            <p className="text-sm font-semibold text-yellow-900 mb-2">To fix this:</p>
-            <ol className="text-sm text-yellow-800 space-y-1 list-decimal list-inside">
-              <li>Create/check your .env.local file in project root</li>
-              <li>Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
-              <li>Restart your development server (npm run dev)</li>
-              <li>Refresh this page</li>
-            </ol>
-          </div>
+          
+          {isMissingEnvVars ? (
+            <>
+              <p className="text-gray-700 mb-4">Missing Supabase environment variables.</p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+                <p className="text-sm font-semibold text-yellow-900 mb-3">Solution:</p>
+                <ol className="text-sm text-yellow-800 space-y-2 list-decimal list-inside">
+                  <li>Your Supabase integration is connected to Vercel</li>
+                  <li>The environment variables are available in Vercel</li>
+                  <li>You need to restart your local dev server to load them</li>
+                  <li>Run: <code className="bg-yellow-100 px-2 py-1 rounded">npm run dev</code></li>
+                  <li>Then refresh this page</li>
+                </ol>
+              </div>
+              <p className="text-xs text-gray-500">The variables NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your Vercel environment and should be available to your local dev server.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-700 mb-4">{error}</p>
+              <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                <p className="text-sm text-blue-900">Please check the browser console for more details.</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )
