@@ -27,8 +27,9 @@ export default function HomePage() {
           setUser(session?.user ?? null)
         }
       } catch (error) {
-        console.error("Auth check error:", error)
-        setError(error instanceof Error ? error.message : "Failed to check authentication")
+        const errorMsg = error instanceof Error ? error.message : "Failed to check authentication"
+        console.error("[v0] Auth check error:", errorMsg)
+        setError(errorMsg)
       } finally {
         setLoading(false)
       }
@@ -47,33 +48,44 @@ export default function HomePage() {
   }
 
   if (error) {
-    const isMissingEnvVars = error.includes("Supabase environment variables") || error.includes("Missing Supabase")
+    const isMissingEnvVars = error.includes("Missing Supabase environment variables")
+    const isInvalidURL = error.includes("Invalid") && error.includes("URL")
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Configuration Error</h1>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Supabase Configuration Error</h1>
           
-          {isMissingEnvVars ? (
+          {isMissingEnvVars && (
             <>
-              <p className="text-gray-700 mb-4">Missing Supabase environment variables.</p>
+              <p className="text-gray-700 mb-4">Missing required environment variables.</p>
               <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
-                <p className="text-sm font-semibold text-yellow-900 mb-3">Solution:</p>
-                <ol className="text-sm text-yellow-800 space-y-2 list-decimal list-inside">
-                  <li>Your Supabase integration is connected to Vercel</li>
-                  <li>The environment variables are available in Vercel</li>
-                  <li>You need to restart your local dev server to load them</li>
-                  <li>Run: <code className="bg-yellow-100 px-2 py-1 rounded">npm run dev</code></li>
-                  <li>Then refresh this page</li>
-                </ol>
+                <p className="text-sm font-semibold text-yellow-900 mb-2">Your Supabase integration is connected! But environment variables need to be loaded.</p>
+                <p className="text-sm text-yellow-800">Refresh the page - the variables should load automatically.</p>
               </div>
-              <p className="text-xs text-gray-500">The variables NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your Vercel environment and should be available to your local dev server.</p>
             </>
-          ) : (
+          )}
+          
+          {isInvalidURL && (
             <>
-              <p className="text-gray-700 mb-4">{error}</p>
+              <p className="text-gray-700 mb-4">The Supabase URL is invalid or not properly set.</p>
+              <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-4">
+                <p className="text-sm text-blue-900 mb-2">This usually means:</p>
+                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <li>The Supabase integration is not properly configured</li>
+                  <li>Environment variables haven't loaded yet</li>
+                  <li>Your Supabase URL is missing or malformed</li>
+                </ul>
+              </div>
+              <p className="text-xs text-gray-500 mt-4">Try refreshing the page. Check browser console for details.</p>
+            </>
+          )}
+          
+          {!isMissingEnvVars && !isInvalidURL && (
+            <>
+              <p className="text-gray-700 mb-4 font-mono text-sm">{error}</p>
               <div className="bg-blue-50 border border-blue-200 rounded p-4">
-                <p className="text-sm text-blue-900">Please check the browser console for more details.</p>
+                <p className="text-sm text-blue-900">Check your browser console (F12) for more debugging information.</p>
               </div>
             </>
           )}
