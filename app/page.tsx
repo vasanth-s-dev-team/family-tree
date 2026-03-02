@@ -1,50 +1,74 @@
-import { createClient } from "@/lib/supabase-server"
-import { redirect } from "next/navigation"
-import FamilyTreeDashboard from "@/components/family-tree-dashboard"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle } from "lucide-react"
+"use client"
 
-export default async function HomePage() {
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+import { useEffect, useState } from "react"
+import { FamilyTreeDashboard } from "@/components/family-tree-dashboard"
+import { LoginCard } from "@/components/login-card"
+import { Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase"
 
-    if (!user) {
-      redirect("/auth/login")
+export default function HomePage() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error("Session error:", sessionError)
+          setError(sessionError.message)
+        } else {
+          setUser(session?.user ?? null)
+        }
+      } catch (error) {
+        console.error("Auth check error:", error)
+        setError(error instanceof Error ? error.message : "Failed to check authentication")
+      } finally {
+        setLoading(false)
+      }
     }
 
-    return <FamilyTreeDashboard userId={user.id} />
-  } catch (error) {
-    console.error("Error:", error)
+    checkAuth()
+  }, [])
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <CardTitle className="text-2xl font-bold text-red-600">Configuration Error</CardTitle>
-            <CardDescription>Supabase is not properly configured</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert variant="destructive">
-              <AlertDescription className="text-sm">
-                {error instanceof Error ? error.message : "Unknown configuration error"}
-              </AlertDescription>
-            </Alert>
-            <div className="mt-4 text-sm text-gray-600">
-              <p className="font-semibold mb-2">To fix this issue:</p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Ensure your .env.local file is in the project root</li>
-                <li>Check that NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set</li>
-                <li>Restart your development server</li>
-                <li>Refresh the page</li>
-              </ol>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+        <p className="text-gray-600">Loading...</p>
       </div>
     )
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Configuration Error</h1>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+            <p className="text-sm font-semibold text-yellow-900 mb-2">To fix this:</p>
+            <ol className="text-sm text-yellow-800 space-y-1 list-decimal list-inside">
+              <li>Create/check your .env.local file in project root</li>
+              <li>Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+              <li>Restart your development server (npm run dev)</li>
+              <li>Refresh this page</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginCard />
+  }
+
+  return <FamilyTreeDashboard user={user} />
 }

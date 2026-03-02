@@ -1,14 +1,11 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 
-const inter = Inter({ subsets: ["latin"] })
-
 export const metadata: Metadata = {
   title: "Family Tree App",
-  description: "Create and manage your family tree with photos and special occasions",
+  description: "Build and manage your family tree with photos and important dates",
     generator: 'v0.app'
 }
 
@@ -19,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className="bg-white">
         {children}
         <Toaster />
       </body>
