@@ -22,12 +22,28 @@ export function FamilyTreeDashboard({ user }: { user: any }) {
     try {
       setLoading(true)
       const supabase = createClient()
-      const { data, error } = await supabase.from("people").select("*").order("created_at", { ascending: false })
+      
+      // Get current user to filter by user_id
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user?.id) {
+        console.error("[v0] No user session found")
+        return
+      }
 
-      if (error) throw error
+      const { data, error } = await supabase
+        .from("people")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("[v0] Error loading family members:", error)
+        throw error
+      }
       setFamilyMembers(data || [])
     } catch (error) {
-      console.error("Error loading family members:", error)
+      console.error("[v0] Error loading family members:", error)
     } finally {
       setLoading(false)
     }
