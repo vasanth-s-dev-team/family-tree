@@ -24,14 +24,35 @@ export function LoginCard() {
     setSuccess("")
     setLoading(true)
 
+    const retryWithDelay = async (fn: () => Promise<any>, retries = 3, delay = 1000) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          console.log(`[v0] Attempt ${i + 1}/${retries}`)
+          return await fn()
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err)
+          console.log(`[v0] Attempt ${i + 1} failed:`, errorMsg)
+          
+          if (i === retries - 1) {
+            throw err
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+
     try {
       const supabase = createClient()
+      console.log("[v0] Supabase client created, attempting auth...")
 
       if (isLogin) {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        const { data, error: signInError } = await retryWithDelay(() =>
+          supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+        )
 
         if (signInError) {
           throw new Error(signInError.message || "Failed to sign in")
@@ -44,10 +65,12 @@ export function LoginCard() {
           }, 1000)
         }
       } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        })
+        const { data, error: signUpError } = await retryWithDelay(() =>
+          supabase.auth.signUp({
+            email,
+            password,
+          })
+        )
 
         if (signUpError) {
           throw new Error(signUpError.message || "Failed to sign up")
@@ -64,13 +87,16 @@ export function LoginCard() {
       console.error("[v0] Auth error:", err)
       const errorMessage = err instanceof Error ? err.message : "An error occurred"
       
-      // Check if it's a configuration error
-      if (errorMessage.includes("fetch") || errorMessage.includes("Failed to fetch")) {
-        setError("Unable to connect to Supabase. Please verify your environment variables are set in .env.local with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY")
-      } else if (errorMessage.includes("Invalid login credentials")) {
+      if (errorMessage.includes("Failed to fetch") || errorMessage.includes("fetch")) {
+        setError("Network error: Unable to reach Supabase. This may be a temporary connectivity issue. Please try again in a moment.")
+      } else if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid credentials")) {
         setError("Invalid email or password. Please check your credentials.")
+      } else if (errorMessage.includes("User already registered")) {
+        setError("This email is already registered. Please sign in instead.")
+      } else if (errorMessage.includes("CORS") || errorMessage.includes("cors")) {
+        setError("CORS error: There's a connectivity issue between this app and Supabase. Please refresh and try again.")
       } else {
-        setError(errorMessage)
+        setError(errorMessage || "An unexpected error occurred. Please try again.")
       }
     } finally {
       setLoading(false)
@@ -96,10 +122,22 @@ export function LoginCard() {
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="space-y-2">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="w-full text-xs"
+                >
+                  {loading ? "Retrying..." : "Retry"}
+                </Button>
+              </div>
             )}
 
             {success && (
