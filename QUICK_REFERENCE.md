@@ -2,7 +2,7 @@
 
 ## 🚀 Deploy in 3 Steps
 
-```bash
+\`\`\`bash
 # 1. Push to GitHub
 git push origin main
 
@@ -11,14 +11,14 @@ git push origin main
 
 # 3. Test live URL
 # https://your-vercel-url.vercel.app
-```
+\`\`\`
 
 ## 📋 Demo Credentials
 
-```
+\`\`\`
 Email:    demo@familytree.com
 Password: DemoPassword123!
-```
+\`\`\`
 
 ## 🔧 Setup (First Time Only)
 
@@ -59,7 +59,7 @@ Password: DemoPassword123!
 
 ## 🌳 Core Features
 
-```
+\`\`\`
 ✅ Authentication (Email/Password)
 ✅ Add/Edit/Delete Members
 ✅ Profile Pictures
@@ -70,18 +70,18 @@ Password: DemoPassword123!
 ✅ Dashboard Stats
 ✅ Mobile Responsive
 ✅ Data Privacy (RLS)
-```
+\`\`\`
 
 ## 📊 Status
 
-```
+\`\`\`
 Development:  ✅ Complete
 Testing:      ✅ Passed
 Docs:         ✅ Complete
 Security:     ✅ Verified
 Performance:  ✅ Optimized
 Status:       ✅ PRODUCTION READY
-```
+\`\`\`
 
 ## 🔐 Environment Variables
 
@@ -93,7 +93,7 @@ Status:       ✅ PRODUCTION READY
 
 ## 💻 Commands
 
-```bash
+\`\`\`bash
 # Development
 npm run dev          # Start dev server (http://localhost:3000)
 
@@ -104,7 +104,7 @@ npm run lint         # Check code quality
 
 # Clean
 npm install          # Install dependencies
-```
+\`\`\`
 
 ## 🎯 Performance
 
@@ -152,13 +152,13 @@ npm install          # Install dependencies
 
 Everything is ready for production deployment. Just push to main and you're live!
 
-```
+\`\`\`
 ✅ All bugs fixed
 ✅ All tests passed
 ✅ All warnings resolved
 ✅ All docs complete
 ✅ Ready to deploy
-```
+\`\`\`
 
 ---
 
