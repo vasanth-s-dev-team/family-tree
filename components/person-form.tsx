@@ -1,210 +1,223 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef } from "react"
-import { createClient } from "@/lib/supabase"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, Plus, Trash2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Label } from "@/components/ui/label"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { createClient } from "@/lib/supabase"
 
-interface SpecialOccasion {
-  date: string
-  title: string
-}
-
-export default function PersonForm({
-  userId,
-  onPersonAdded,
-}: {
-  userId: string
-  onPersonAdded: () => void
-}) {
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [dateOfBirth, setDateOfBirth] = useState("")
-  const [dateOfDeath, setDateOfDeath] = useState("")
-  const [marriageDate, setMarriageDate] = useState("")
-  const [specialOccasions, setSpecialOccasions] = useState<SpecialOccasion[]>([])
-  const [profilePicture, setProfilePicture] = useState<File | null>(null)
+export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    dateOfDeath: "",
+    marriageDate: "",
+    specialOccasions: "",
+  })
+  const [profileImage, setProfileImage] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setProfilePicture(e.target.files[0])
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProfileImage(e.target.files[0])
     }
-  }
-
-  const addSpecialOccasion = () => {
-    setSpecialOccasions([...specialOccasions, { date: "", title: "" }])
-  }
-
-  const updateSpecialOccasion = (index: number, field: string, value: string) => {
-    const updated = [...specialOccasions]
-    updated[index] = { ...updated[index], [field]: value }
-    setSpecialOccasions(updated)
-  }
-
-  const removeSpecialOccasion = (index: number) => {
-    setSpecialOccasions(specialOccasions.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    setSuccess("")
     setLoading(true)
 
     try {
       const supabase = createClient()
-      let profilePictureUrl = null
 
-      // Upload profile picture if provided
-      if (profilePicture) {
-        const fileExt = profilePicture.name.split(".").pop()
-        const fileName = `${Math.random()}.${fileExt}`
-        const { data, error: uploadError } = await supabase.storage
+      // Get current user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error("Not authenticated")
+      }
+
+      let profileImageUrl = null
+
+      // Upload image if provided
+      if (profileImage) {
+        const fileExt = profileImage.name.split(".").pop()
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage
           .from("profile-pictures")
-          .upload(`${userId}/${fileName}`, profilePicture)
+          .upload(`public/${fileName}`, profileImage)
 
         if (uploadError) throw uploadError
 
-        const { data: publicUrlData } = supabase.storage.from("profile-pictures").getPublicUrl(`${userId}/${fileName}`)
+        const { data } = supabase.storage.from("profile-pictures").getPublicUrl(`public/${fileName}`)
 
-        profilePictureUrl = publicUrlData.publicUrl
+        profileImageUrl = data.publicUrl
       }
 
       // Insert person record
-      const { error } = await supabase.from("people").insert([
+      const { error: insertError } = await supabase.from("people").insert([
         {
-          user_id: userId,
-          first_name: firstName,
-          last_name: lastName,
-          date_of_birth: dateOfBirth || null,
-          date_of_death: dateOfDeath || null,
-          marriage_date: marriageDate || null,
-          profile_picture_url: profilePictureUrl,
-          special_occasions: specialOccasions.length > 0 ? JSON.stringify(specialOccasions) : null,
+          user_id: user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          date_of_birth: formData.dateOfBirth || null,
+          date_of_death: formData.dateOfDeath || null,
+          marriage_date: formData.marriageDate || null,
+          special_occasions: formData.specialOccasions || null,
+          profile_picture_url: profileImageUrl,
         },
       ])
 
-      if (error) throw error
+      if (insertError) throw insertError
 
-      toast({
-        title: "Success",
-        description: "Family member added successfully",
+      setSuccess("Family member added successfully!")
+      setFormData({
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        dateOfDeath: "",
+        marriageDate: "",
+        specialOccasions: "",
       })
+      setProfileImage(null)
 
-      // Reset form
-      setFirstName("")
-      setLastName("")
-      setDateOfBirth("")
-      setDateOfDeath("")
-      setMarriageDate("")
-      setSpecialOccasions([])
-      setProfilePicture(null)
-      if (fileInputRef.current) fileInputRef.current.value = ""
-
-      onPersonAdded()
-    } catch (error) {
-      console.error("Error adding person:", error)
-      toast({
-        title: "Error",
-        description: "Failed to add family member",
-        variant: "destructive",
-      })
+      setTimeout(() => {
+        onSuccess()
+      }, 1500)
+    } catch (err) {
+      console.error("Error adding person:", err)
+      setError(err instanceof Error ? err.message : "Failed to add family member")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add Family Member</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-              <Input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" required />
-            </div>
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-            <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
-          </div>
+      {success && (
+        <Alert className="bg-green-50 border-green-200">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Death</label>
-            <Input type="date" value={dateOfDeath} onChange={(e) => setDateOfDeath(e.target.value)} />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="firstName">First Name *</Label>
+          <Input
+            id="firstName"
+            name="firstName"
+            value={formData.firstName}
+            onChange={handleInputChange}
+            required
+            disabled={loading}
+            placeholder="John"
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Marriage Date</label>
-            <Input type="date" value={marriageDate} onChange={(e) => setMarriageDate(e.target.value)} />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="lastName">Last Name *</Label>
+          <Input
+            id="lastName"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            required
+            disabled={loading}
+            placeholder="Doe"
+          />
+        </div>
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
-            <div className="flex gap-2">
-              <Input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="flex-1" />
-              <Button type="button" variant="outline">
-                <Upload className="h-4 w-4" />
-              </Button>
-            </div>
-            {profilePicture && <p className="text-sm text-green-600 mt-1">Selected: {profilePicture.name}</p>}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="dateOfBirth">Date of Birth</Label>
+          <Input
+            id="dateOfBirth"
+            name="dateOfBirth"
+            type="date"
+            value={formData.dateOfBirth}
+            onChange={handleInputChange}
+            disabled={loading}
+          />
+        </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">Special Occasions</label>
-              <Button type="button" variant="outline" size="sm" onClick={addSpecialOccasion}>
-                <Plus className="h-3 w-3 mr-1" />
-                Add
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {specialOccasions.map((occasion, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    type="date"
-                    value={occasion.date}
-                    onChange={(e) => updateSpecialOccasion(index, "date", e.target.value)}
-                    className="flex-1"
-                  />
-                  <Input
-                    value={occasion.title}
-                    onChange={(e) => updateSpecialOccasion(index, "title", e.target.value)}
-                    placeholder="Event title"
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="destructive" size="icon" onClick={() => removeSpecialOccasion(index)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="dateOfDeath">Date of Death (if applicable)</Label>
+          <Input
+            id="dateOfDeath"
+            name="dateOfDeath"
+            type="date"
+            value={formData.dateOfDeath}
+            onChange={handleInputChange}
+            disabled={loading}
+          />
+        </div>
+      </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Adding..." : "Add Family Member"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="marriageDate">Marriage Date</Label>
+          <Input
+            id="marriageDate"
+            name="marriageDate"
+            type="date"
+            value={formData.marriageDate}
+            onChange={handleInputChange}
+            disabled={loading}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="profileImage">Profile Picture</Label>
+          <Input id="profileImage" type="file" accept="image/*" onChange={handleImageChange} disabled={loading} />
+          {profileImage && <p className="text-sm text-green-600">✓ Image selected: {profileImage.name}</p>}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="specialOccasions">Special Occasions (comma-separated dates)</Label>
+        <textarea
+          id="specialOccasions"
+          name="specialOccasions"
+          value={formData.specialOccasions}
+          onChange={handleInputChange}
+          disabled={loading}
+          placeholder="e.g., 2023-05-15: Graduation, 2023-06-20: Promotion"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={4}
+        />
+      </div>
+
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Adding..." : "Add Family Member"}
+      </Button>
+    </form>
   )
 }
