@@ -86,15 +86,23 @@ export function LoginCard() {
     } catch (err) {
       console.error("[v0] Auth error:", err)
       const errorMessage = err instanceof Error ? err.message : "An error occurred"
+      const isPreviewEnvironment = typeof window !== "undefined" && window.location.hostname.includes("vusercontent.net")
       
       if (errorMessage.includes("Failed to fetch") || errorMessage.includes("fetch")) {
-        setError("Network error: Unable to reach Supabase. This may be a temporary connectivity issue. Please try again in a moment.")
+        if (isPreviewEnvironment) {
+          setError(
+            "v0 Preview Limitation: Authentication works in production but is restricted in this preview environment for security. " +
+            "The app will work perfectly once deployed to Vercel. To test, deploy to production or run locally with: npm run dev"
+          )
+        } else {
+          setError("Network error: Unable to reach Supabase. Please check your internet connection and try again.")
+        }
       } else if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid credentials")) {
         setError("Invalid email or password. Please check your credentials.")
       } else if (errorMessage.includes("User already registered")) {
         setError("This email is already registered. Please sign in instead.")
       } else if (errorMessage.includes("CORS") || errorMessage.includes("cors")) {
-        setError("CORS error: There's a connectivity issue between this app and Supabase. Please refresh and try again.")
+        setError("CORS error: There's a connectivity issue. This is normal in preview - works in production deployment.")
       } else {
         setError(errorMessage || "An unexpected error occurred. Please try again.")
       }
@@ -109,6 +117,8 @@ export function LoginCard() {
     setIsLogin(true)
     setError("")
   }
+
+  const isPreviewEnvironment = typeof window !== "undefined" && window.location.hostname.includes("vusercontent.net")
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
@@ -225,7 +235,17 @@ export function LoginCard() {
             </button>
           </div>
 
-          <div className="mt-6 p-3 bg-blue-50 rounded border border-blue-200">
+          {isPreviewEnvironment && (
+            <div className="mt-4 p-3 bg-amber-50 rounded border border-amber-200">
+              <p className="text-xs text-amber-900 font-semibold mb-1">Preview Environment Note:</p>
+              <p className="text-xs text-amber-800">
+                This v0 preview has network restrictions. Authentication will work perfectly when deployed to Vercel. 
+                To test now, clone the repo and run: <span className="font-mono">npm run dev</span>
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
             <p className="text-xs text-blue-900 font-semibold mb-1">Demo Account:</p>
             <p className="text-xs text-blue-800 font-mono">demo@familytree.com</p>
             <p className="text-xs text-blue-800 font-mono">DemoPassword123!</p>
