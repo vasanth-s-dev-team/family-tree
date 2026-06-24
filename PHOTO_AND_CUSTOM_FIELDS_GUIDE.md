@@ -27,7 +27,7 @@ Users can add multiple additional photos for each person with:
 - Delete individual photos
 
 **Stored in JSONB format:**
-```json
+\`\`\`json
 [
   {
     "url": "https://...",
@@ -35,7 +35,7 @@ Users can add multiple additional photos for each person with:
     "visible": true
   }
 ]
-```
+\`\`\`
 
 ### 3. Family Photos
 
@@ -46,7 +46,7 @@ Dedicated section for family group photos with:
 - Easy management and deletion
 
 **Stored in JSONB format:**
-```json
+\`\`\`json
 [
   {
     "url": "https://...",
@@ -54,7 +54,7 @@ Dedicated section for family group photos with:
     "visible": true
   }
 ]
-```
+\`\`\`
 
 ### 4. Current City Field
 
@@ -86,7 +86,7 @@ Advanced feature allowing users to create custom fields for family members:
 
 ### Updated `people` table
 
-```sql
+\`\`\`sql
 -- Photo management
 profile_picture_visible BOOLEAN DEFAULT TRUE
 additional_photos JSONB DEFAULT '[]'::jsonb
@@ -97,11 +97,11 @@ current_city VARCHAR(255)
 
 -- Custom fields
 custom_fields JSONB DEFAULT '{}'::jsonb
-```
+\`\`\`
 
 ### New `custom_field_templates` table
 
-```sql
+\`\`\`sql
 CREATE TABLE custom_field_templates (
   id UUID PRIMARY KEY
   user_id UUID (References auth.users)
@@ -112,7 +112,7 @@ CREATE TABLE custom_field_templates (
   display_order INT DEFAULT 0
   created_at TIMESTAMP
 )
-```
+\`\`\`
 
 ## Usage Examples
 
@@ -162,18 +162,18 @@ Photos and custom fields are stored in JSONB, allowing:
 - Query photos by visibility status
 
 Example query:
-```sql
+\`\`\`sql
 SELECT * FROM people 
 WHERE custom_fields->>'hobbies' ILIKE '%photography%'
   AND family_photos @> '[{"visible": true}]'
-```
+\`\`\`
 
 ## Frontend Implementation
 
 ### PersonForm Component
 
 **State Management:**
-```typescript
+\`\`\`typescript
 const [profileImageVisible, setProfileImageVisible] = useState(true)
 const [additionalPhotos, setAdditionalPhotos] = useState<Array<{
   file: File
@@ -189,7 +189,7 @@ const [customFields, setCustomFields] = useState<Array<{
   name: string
   value: string
 }>>([])
-```
+\`\`\`
 
 **Photo Upload:**
 - Uses Supabase Storage
@@ -248,7 +248,7 @@ All photo and custom field data is protected by:
 
 ### Retrieving Photos in Public API
 
-```json
+\`\`\`json
 {
   "id": "...",
   "first_name": "John",
@@ -261,14 +261,14 @@ All photo and custom field data is protected by:
     {"url": "https://...", "caption": "...", "visible": true}
   ]
 }
-```
+\`\`\`
 
 ### Filtering by Visibility
 
 Only return visible photos in public API responses:
-```typescript
+\`\`\`typescript
 const visiblePhotos = person.additional_photos.filter(p => p.visible)
-```
+\`\`\`
 
 ## Future Enhancements
 
@@ -298,7 +298,7 @@ const visiblePhotos = person.additional_photos.filter(p => p.visible)
 
 Run the SQL migration to add new columns:
 
-```sql
+\`\`\`sql
 -- Add photo fields
 ALTER TABLE people ADD COLUMN profile_picture_visible BOOLEAN DEFAULT TRUE;
 ALTER TABLE people ADD COLUMN additional_photos JSONB DEFAULT '[]'::jsonb;
@@ -320,7 +320,7 @@ CREATE TABLE custom_field_templates (
 );
 
 ALTER TABLE custom_field_templates ENABLE ROW LEVEL SECURITY;
-```
+\`\`\`
 
 ## Troubleshooting
 
