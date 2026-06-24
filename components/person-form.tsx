@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Trash2, Eye, EyeOff, Plus } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase"
 
@@ -23,9 +23,14 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
     education: "",
     occupation: "",
     location: "",
+    currentCity: "",
     bio: "",
   })
   const [profileImage, setProfileImage] = useState<File | null>(null)
+  const [profileImageVisible, setProfileImageVisible] = useState(true)
+  const [additionalPhotos, setAdditionalPhotos] = useState<Array<{ file: File; caption: string; visible: boolean }>>([])
+  const [familyPhotos, setFamilyPhotos] = useState<Array<{ file: File; caption: string; visible: boolean }>>([])
+  const [customFields, setCustomFields] = useState<Array<{ name: string; value: string }>>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -81,6 +86,55 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
         profileImageUrl = data.publicUrl
       }
 
+      // Upload additional photos
+      const uploadedAdditionalPhotos = []
+      for (const photo of additionalPhotos) {
+        const fileExt = photo.file.name.split(".").pop()
+        const fileName = `${user.id}-additional-${Date.now()}.${fileExt}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from("profile-pictures")
+          .upload(`public/${fileName}`, photo.file)
+        
+        if (!uploadError) {
+          const { data } = supabase.storage.from("profile-pictures").getPublicUrl(`public/${fileName}`)
+          uploadedAdditionalPhotos.push({
+            url: data.publicUrl,
+            caption: photo.caption,
+            visible: photo.visible,
+          })
+        }
+      }
+
+      // Upload family photos
+      const uploadedFamilyPhotos = []
+      for (const photo of familyPhotos) {
+        const fileExt = photo.file.name.split(".").pop()
+        const fileName = `${user.id}-family-${Date.now()}.${fileExt}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from("profile-pictures")
+          .upload(`public/${fileName}`, photo.file)
+        
+        if (!uploadError) {
+          const { data } = supabase.storage.from("profile-pictures").getPublicUrl(`public/${fileName}`)
+          uploadedFamilyPhotos.push({
+            url: data.publicUrl,
+            caption: photo.caption,
+            visible: photo.visible,
+          })
+        }
+      }
+
+      // Convert custom fields to object
+      const customFieldsObj = customFields.reduce(
+        (acc, field) => ({
+          ...acc,
+          [field.name]: field.value,
+        }),
+        {}
+      )
+
       // Insert person record
       const { error: insertError } = await supabase.from("people").insert([
         {
@@ -92,13 +146,18 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
           marriage_date: formData.marriageDate || null,
           special_occasions: formData.specialOccasions || null,
           profile_picture_url: profileImageUrl,
+          profile_picture_visible: profileImageVisible,
+          additional_photos: uploadedAdditionalPhotos,
+          family_photos: uploadedFamilyPhotos,
           whatsapp_number: formData.whatsappNumber || null,
           email: formData.email || null,
           phone: formData.phone || null,
           education: formData.education || null,
           occupation: formData.occupation || null,
           location: formData.location || null,
+          current_city: formData.currentCity || null,
           bio: formData.bio || null,
+          custom_fields: customFieldsObj,
         },
       ])
 
@@ -118,9 +177,14 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
         education: "",
         occupation: "",
         location: "",
+        currentCity: "",
         bio: "",
       })
       setProfileImage(null)
+      setProfileImageVisible(true)
+      setAdditionalPhotos([])
+      setFamilyPhotos([])
+      setCustomFields([])
 
       setTimeout(() => {
         onSuccess()
@@ -216,7 +280,19 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profileImage">Profile Picture</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="profileImage">Profile Picture</Label>
+            {profileImage && (
+              <button
+                type="button"
+                onClick={() => setProfileImageVisible(!profileImageVisible)}
+                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {profileImageVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                {profileImageVisible ? "Visible" : "Hidden"}
+              </button>
+            )}
+          </div>
           <Input id="profileImage" type="file" accept="image/*" onChange={handleImageChange} disabled={loading} />
           {profileImage && <p className="text-sm text-green-600">✓ Image selected: {profileImage.name}</p>}
         </div>
@@ -312,6 +388,18 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
               placeholder="New York, USA"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="currentCity">Current City</Label>
+            <Input
+              id="currentCity"
+              name="currentCity"
+              value={formData.currentCity}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="San Francisco, CA"
+            />
+          </div>
         </div>
 
         <div className="space-y-2 mt-4">
@@ -326,6 +414,201 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
           />
+        </div>
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold mb-4">Additional Photos</h3>
+        <div className="space-y-4">
+          {additionalPhotos.map((photo, idx) => (
+            <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+              <div className="flex justify-between items-start mb-2">
+                <p className="font-medium text-sm">{photo.file.name}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdditionalPhotos(additionalPhotos.filter((_, i) => i !== idx))
+                  }}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  type="text"
+                  placeholder="Photo caption"
+                  value={photo.caption}
+                  onChange={(e) => {
+                    const updated = [...additionalPhotos]
+                    updated[idx].caption = e.target.value
+                    setAdditionalPhotos(updated)
+                  }}
+                  disabled={loading}
+                  className="flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = [...additionalPhotos]
+                    updated[idx].visible = !updated[idx].visible
+                    setAdditionalPhotos(updated)
+                  }}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  {photo.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const input = document.createElement("input")
+              input.type = "file"
+              input.accept = "image/*"
+              input.onchange = (e: any) => {
+                if (e.target.files?.[0]) {
+                  setAdditionalPhotos([
+                    ...additionalPhotos,
+                    { file: e.target.files[0], caption: "", visible: true },
+                  ])
+                }
+              }
+              input.click()
+            }}
+            disabled={loading}
+            className="w-full"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Additional Photo
+          </Button>
+        </div>
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold mb-4">Family Photos</h3>
+        <div className="space-y-4">
+          {familyPhotos.map((photo, idx) => (
+            <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+              <div className="flex justify-between items-start mb-2">
+                <p className="font-medium text-sm">{photo.file.name}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFamilyPhotos(familyPhotos.filter((_, i) => i !== idx))
+                  }}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  type="text"
+                  placeholder="Photo description"
+                  value={photo.caption}
+                  onChange={(e) => {
+                    const updated = [...familyPhotos]
+                    updated[idx].caption = e.target.value
+                    setFamilyPhotos(updated)
+                  }}
+                  disabled={loading}
+                  className="flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = [...familyPhotos]
+                    updated[idx].visible = !updated[idx].visible
+                    setFamilyPhotos(updated)
+                  }}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  {photo.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const input = document.createElement("input")
+              input.type = "file"
+              input.accept = "image/*"
+              input.onchange = (e: any) => {
+                if (e.target.files?.[0]) {
+                  setFamilyPhotos([
+                    ...familyPhotos,
+                    { file: e.target.files[0], caption: "", visible: true },
+                  ])
+                }
+              }
+              input.click()
+            }}
+            disabled={loading}
+            className="w-full"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Family Photo
+          </Button>
+        </div>
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold mb-4">Custom Fields</h3>
+        <div className="space-y-4">
+          {customFields.map((field, idx) => (
+            <div key={idx} className="flex gap-2 items-end">
+              <Input
+                type="text"
+                placeholder="Field name"
+                value={field.name}
+                onChange={(e) => {
+                  const updated = [...customFields]
+                  updated[idx].name = e.target.value
+                  setCustomFields(updated)
+                }}
+                disabled={loading}
+                className="w-40"
+              />
+              <Input
+                type="text"
+                placeholder="Field value"
+                value={field.value}
+                onChange={(e) => {
+                  const updated = [...customFields]
+                  updated[idx].value = e.target.value
+                  setCustomFields(updated)
+                }}
+                disabled={loading}
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomFields(customFields.filter((_, i) => i !== idx))
+                }}
+                className="text-red-600 hover:text-red-800 p-2"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setCustomFields([...customFields, { name: "", value: "" }])
+            }}
+            disabled={loading}
+            className="w-full"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Custom Field
+          </Button>
         </div>
       </div>
 

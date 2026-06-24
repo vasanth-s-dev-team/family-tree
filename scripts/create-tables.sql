@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS people (
   marriage_date DATE,
   special_occasions TEXT,
   profile_picture_url TEXT,
+  profile_picture_visible BOOLEAN DEFAULT TRUE,
   parent_id UUID REFERENCES people(id) ON DELETE SET NULL,
   spouse_id UUID REFERENCES people(id) ON DELETE SET NULL,
   -- New fields for enhanced profiles
@@ -18,7 +19,13 @@ CREATE TABLE IF NOT EXISTS people (
   education TEXT,
   occupation VARCHAR(255),
   location VARCHAR(255),
+  current_city VARCHAR(255),
   bio TEXT,
+  -- Photo management
+  additional_photos JSONB DEFAULT '[]'::jsonb, -- Array of {url, caption, visible}
+  family_photos JSONB DEFAULT '[]'::jsonb, -- Array of family photos with {url, caption, visible}
+  -- Custom fields (stored as JSONB for flexibility)
+  custom_fields JSONB DEFAULT '{}'::jsonb,
   -- Family tree visibility
   family_tree_id UUID NOT NULL DEFAULT gen_random_uuid(),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -76,12 +83,26 @@ CREATE TABLE IF NOT EXISTS sharing_links (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create custom fields template table
+CREATE TABLE IF NOT EXISTS custom_field_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(50) NOT NULL, -- text, number, date, select, checkbox, textarea
+  field_options JSONB, -- For select/checkbox options
+  is_required BOOLEAN DEFAULT FALSE,
+  display_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, field_name)
+);
+
 -- Enable Row Level Security
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_trees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_tree_collaborators ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_tree_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sharing_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE custom_field_templates ENABLE ROW LEVEL SECURITY;
 
 -- People table RLS policies
 CREATE POLICY "Users can view their own family members"
@@ -132,6 +153,23 @@ CREATE POLICY "Manage collaborators on owned trees"
       WHERE id = family_tree_id AND owner_id = auth.uid()
     )
   );
+
+-- Custom field templates RLS policies
+CREATE POLICY "Users can view their own custom fields"
+  ON custom_field_templates FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create custom fields"
+  ON custom_field_templates FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own custom fields"
+  ON custom_field_templates FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own custom fields"
+  ON custom_field_templates FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- Create storage bucket for profile pictures
 INSERT INTO storage.buckets (id, name, public)
