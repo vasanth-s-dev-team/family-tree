@@ -175,9 +175,9 @@ The Family Tree application is **fully developed and feature-complete**. The cur
 ### For Immediate Deployment
 
 1. **Deploy to Vercel**
-   ```bash
+   \`\`\`bash
    git push origin main
-   ```
+   \`\`\`
    - Vercel auto-detects changes
    - Build runs automatically
    - Deployment to production in 2-3 minutes
@@ -207,7 +207,7 @@ The Family Tree application is **fully developed and feature-complete**. The cur
 
 ## Architecture Summary
 
-```
+\`\`\`
 Family Tree App
 ├── Frontend
 │   ├── Next.js 14.2.35
@@ -220,7 +220,7 @@ Family Tree App
 │   └── Row Level Security
 └── Storage
     └── Supabase Storage (Profile Pictures)
-```
+\`\`\`
 
 ---
 

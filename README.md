@@ -30,7 +30,7 @@ Password: `DemoPassword123!`
 
 ### Installation
 
-```bash
+\`\`\`bash
 # Clone and install
 git clone https://github.com/your-repo/family-tree-app.git
 cd family-tree-app
@@ -45,7 +45,7 @@ npm install
 # Start development
 npm run dev
 # Open http://localhost:3000
-```
+\`\`\`
 
 ## 📚 Documentation
 
@@ -113,7 +113,7 @@ See [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) for full checklist.
 
 ## 🏗️ Architecture
 
-```
+\`\`\`
 family-tree-app/
 ├── app/                    # Next.js app directory
 │   ├── auth/              # Auth pages
@@ -131,22 +131,22 @@ family-tree-app/
 │   └── utils.ts          # Helper functions
 └── scripts/              # Database scripts
     └── create-tables.sql
-```
+\`\`\`
 
 ## 🔧 Configuration
 
 ### Required Environment Variables
 
-```env
+\`\`\`env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-```
+\`\`\`
 
 These are automatically available in Vercel from the Supabase integration.
 
 ## ✅ Build & Lint
 
-```bash
+\`\`\`bash
 # Build for production
 npm run build
 
@@ -155,7 +155,7 @@ npm run lint
 
 # Start production server
 npm start
-```
+\`\`\`
 
 ## 🐛 Known Issues & Resolutions
 
