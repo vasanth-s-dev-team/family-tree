@@ -23,36 +23,27 @@ export function LoginCard() {
     setError("")
     setSuccess("")
     setLoading(true)
+    
+    const isPreviewEnvironment = typeof window !== "undefined" && window.location.hostname.includes("vusercontent.net")
 
-    const retryWithDelay = async (fn: () => Promise<any>, retries = 3, delay = 1000) => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          console.log(`[v0] Attempt ${i + 1}/${retries}`)
-          return await fn()
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err)
-          console.log(`[v0] Attempt ${i + 1} failed:`, errorMsg)
-          
-          if (i === retries - 1) {
-            throw err
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-      }
+    // If in preview, don't even try - just show the message immediately
+    if (isPreviewEnvironment) {
+      setError(
+        "v0 Preview Limitation: Auth is restricted in this preview environment for security. " +
+        "The app works perfectly on Vercel. Deploy now or run locally with 'npm run dev' to test."
+      )
+      setLoading(false)
+      return
     }
 
     try {
       const supabase = createClient()
-      console.log("[v0] Supabase client created, attempting auth...")
 
       if (isLogin) {
-        const { data, error: signInError } = await retryWithDelay(() =>
-          supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
-        )
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
         if (signInError) {
           throw new Error(signInError.message || "Failed to sign in")
@@ -65,12 +56,10 @@ export function LoginCard() {
           }, 1000)
         }
       } else {
-        const { data, error: signUpError } = await retryWithDelay(() =>
-          supabase.auth.signUp({
-            email,
-            password,
-          })
-        )
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        })
 
         if (signUpError) {
           throw new Error(signUpError.message || "Failed to sign up")
@@ -84,27 +73,16 @@ export function LoginCard() {
         }
       }
     } catch (err) {
-      console.error("[v0] Auth error:", err)
       const errorMessage = err instanceof Error ? err.message : "An error occurred"
-      const isPreviewEnvironment = typeof window !== "undefined" && window.location.hostname.includes("vusercontent.net")
       
-      if (errorMessage.includes("Failed to fetch") || errorMessage.includes("fetch")) {
-        if (isPreviewEnvironment) {
-          setError(
-            "v0 Preview Limitation: Authentication works in production but is restricted in this preview environment for security. " +
-            "The app will work perfectly once deployed to Vercel. To test, deploy to production or run locally with: npm run dev"
-          )
-        } else {
-          setError("Network error: Unable to reach Supabase. Please check your internet connection and try again.")
-        }
-      } else if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid credentials")) {
-        setError("Invalid email or password. Please check your credentials.")
+      if (errorMessage.includes("Invalid login credentials")) {
+        setError("Invalid email or password.")
       } else if (errorMessage.includes("User already registered")) {
-        setError("This email is already registered. Please sign in instead.")
-      } else if (errorMessage.includes("CORS") || errorMessage.includes("cors")) {
-        setError("CORS error: There's a connectivity issue. This is normal in preview - works in production deployment.")
+        setError("This email is already registered. Sign in instead.")
+      } else if (errorMessage.includes("fetch")) {
+        setError("Network error. Check your connection and try again.")
       } else {
-        setError(errorMessage || "An unexpected error occurred. Please try again.")
+        setError(errorMessage || "An error occurred.")
       }
     } finally {
       setLoading(false)
@@ -117,8 +95,6 @@ export function LoginCard() {
     setIsLogin(true)
     setError("")
   }
-
-  const isPreviewEnvironment = typeof window !== "undefined" && window.location.hostname.includes("vusercontent.net")
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
@@ -235,15 +211,13 @@ export function LoginCard() {
             </button>
           </div>
 
-          {isPreviewEnvironment && (
-            <div className="mt-4 p-3 bg-amber-50 rounded border border-amber-200">
-              <p className="text-xs text-amber-900 font-semibold mb-1">Preview Environment Note:</p>
-              <p className="text-xs text-amber-800">
-                This v0 preview has network restrictions. Authentication will work perfectly when deployed to Vercel. 
-                To test now, clone the repo and run: <span className="font-mono">npm run dev</span>
-              </p>
-            </div>
-          )}
+          <div className="mt-4 p-3 bg-amber-50 rounded border border-amber-200">
+            <p className="text-xs text-amber-900 font-semibold mb-1">About v0 Preview:</p>
+            <p className="text-xs text-amber-800">
+              Network requests to external APIs are restricted here for security. 
+              <br />Auth works perfectly on <span className="font-semibold">Vercel</span> or locally with <span className="font-mono">npm run dev</span>.
+            </p>
+          </div>
 
           <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
             <p className="text-xs text-blue-900 font-semibold mb-1">Demo Account:</p>

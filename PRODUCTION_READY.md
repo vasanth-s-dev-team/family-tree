@@ -51,7 +51,7 @@ A full-stack family tree application built with Next.js, React, Supabase, and Ty
 
 ### Architecture
 
-```
+\`\`\`
 /app
   /auth
     /login
@@ -76,11 +76,11 @@ A full-stack family tree application built with Next.js, React, Supabase, and Ty
 
 /public
   (static assets, placeholder images)
-```
+\`\`\`
 
 ### Database Schema
 
-```sql
+\`\`\`sql
 CREATE TABLE people (
   id UUID PRIMARY KEY,
   user_id UUID (references auth.users),
@@ -96,7 +96,7 @@ CREATE TABLE people (
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
-```
+\`\`\`
 
 ### RLS Policies
 - Users can only SELECT/INSERT/UPDATE/DELETE their own family records
@@ -105,15 +105,15 @@ CREATE TABLE people (
 ### Environment Variables Required
 
 **Vercel/Production:**
-```
+\`\`\`
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
+\`\`\`
 
 **Local Development (.env.local):**
-```
+\`\`\`
 # Automatically pulled from Vercel environment
-```
+\`\`\`
 
 ### Testing Status
 
@@ -145,13 +145,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ### Deployment Instructions
 
 #### 1. Vercel Deployment
-```bash
+\`\`\`bash
 # Push to main branch (automatic)
 git push origin main
 
 # Vercel auto-deploys
 # Check status: https://vercel.com/dashboard
-```
+\`\`\`
 
 #### 2. First Time Setup
 1. Ensure Supabase integration is connected in Vercel

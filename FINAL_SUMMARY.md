@@ -197,7 +197,7 @@ All bugs fixed, warnings resolved, testing completed, and documentation comprehe
 ## 🚀 DEPLOYMENT READY
 
 ### What's Included
-```
+\`\`\`
 ✅ Complete Next.js 14 application
 ✅ Supabase database configured
 ✅ Authentication system working
@@ -207,10 +207,10 @@ All bugs fixed, warnings resolved, testing completed, and documentation comprehe
 ✅ Testing completed
 ✅ Security verified
 ✅ Performance optimized
-```
+\`\`\`
 
 ### Quick Deployment
-```bash
+\`\`\`bash
 # 1. Push to main
 git push origin main
 
@@ -221,13 +221,13 @@ git push origin main
 # (Visit your deployment)
 
 # 4. Done!
-```
+\`\`\`
 
 ### Demo Account for Testing
-```
+\`\`\`
 Email: demo@familytree.com
 Password: DemoPassword123!
-```
+\`\`\`
 
 ---
 
