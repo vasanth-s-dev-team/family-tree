@@ -17,6 +17,13 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
     dateOfDeath: "",
     marriageDate: "",
     specialOccasions: "",
+    whatsappNumber: "",
+    email: "",
+    phone: "",
+    education: "",
+    occupation: "",
+    location: "",
+    bio: "",
   })
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -85,6 +92,13 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
           marriage_date: formData.marriageDate || null,
           special_occasions: formData.specialOccasions || null,
           profile_picture_url: profileImageUrl,
+          whatsapp_number: formData.whatsappNumber || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          education: formData.education || null,
+          occupation: formData.occupation || null,
+          location: formData.location || null,
+          bio: formData.bio || null,
         },
       ])
 
@@ -98,6 +112,13 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
         dateOfDeath: "",
         marriageDate: "",
         specialOccasions: "",
+        whatsappNumber: "",
+        email: "",
+        phone: "",
+        education: "",
+        occupation: "",
+        location: "",
+        bio: "",
       })
       setProfileImage(null)
 
@@ -211,8 +232,101 @@ export function PersonForm({ onSuccess }: { onSuccess: () => void }) {
           disabled={loading}
           placeholder="e.g., 2023-05-15: Graduation, 2023-06-20: Promotion"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows={4}
+          rows={3}
         />
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold mb-4">Contact & Additional Info</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+            <Input
+              id="whatsappNumber"
+              name="whatsappNumber"
+              value={formData.whatsappNumber}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="john@example.com"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="+1 (555) 987-6543"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="occupation">Occupation</Label>
+            <Input
+              id="occupation"
+              name="occupation"
+              value={formData.occupation}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="Software Engineer"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="education">Education</Label>
+            <Input
+              id="education"
+              name="education"
+              value={formData.education}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="Bachelor's in Computer Science"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              name="location"
+              value={formData.location}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="New York, USA"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2 mt-4">
+          <Label htmlFor="bio">Bio/Notes</Label>
+          <textarea
+            id="bio"
+            name="bio"
+            value={formData.bio}
+            onChange={handleInputChange}
+            disabled={loading}
+            placeholder="Add any additional notes or biography..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows={3}
+          />
+        </div>
       </div>
 
       <Button type="submit" className="w-full" disabled={loading}>
