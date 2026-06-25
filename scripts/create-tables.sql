@@ -134,6 +134,31 @@ CREATE TABLE IF NOT EXISTS custom_field_templates (
   UNIQUE(user_id, field_name)
 );
 
+-- Helper functions to avoid infinite RLS recursion
+CREATE OR REPLACE FUNCTION is_family_member(_family_id UUID, _user_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM family_members 
+    WHERE family_id = _family_id AND user_id = _user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION check_family_role(_family_id UUID, _user_id UUID, _role VARCHAR)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM family_members 
+    WHERE family_id = _family_id AND user_id = _user_id AND role = _role
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION is_family_creator(_family_id UUID, _user_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM families 
+    WHERE id = _family_id AND created_by = _user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
 -- Enable Row Level Security
 ALTER TABLE families ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_members ENABLE ROW LEVEL SECURITY;
@@ -150,7 +175,7 @@ CREATE POLICY "Users can view their families"
   ON families FOR SELECT
   USING (
     created_by = auth.uid()
-    OR EXISTS (SELECT 1 FROM family_members WHERE family_id = families.id AND user_id = auth.uid())
+    OR is_family_member(id, auth.uid())
     OR is_public = TRUE
   );
 
@@ -162,60 +187,57 @@ CREATE POLICY "Family admins can update families"
   ON families FOR UPDATE
   USING (
     created_by = auth.uid()
-    OR EXISTS (SELECT 1 FROM family_members WHERE family_id = families.id AND user_id = auth.uid() AND role = 'admin')
+    OR check_family_role(id, auth.uid(), 'admin')
   );
 
 -- Family members table RLS policies
 CREATE POLICY "Users can view family members"
   ON family_members FOR SELECT
-  USING (
-    user_id = auth.uid()
-    OR EXISTS (SELECT 1 FROM family_members fm2 WHERE fm2.family_id = family_members.family_id AND fm2.user_id = auth.uid())
-  );
+  USING (is_family_member(family_id, auth.uid()));
 
 CREATE POLICY "Family admins can manage members"
-  ON family_members FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM family_members WHERE family_id = family_members.family_id AND user_id = auth.uid() AND role = 'admin')
+  ON family_members FOR ALL
+  USING (
+    check_family_role(family_id, auth.uid(), 'admin')
+    OR is_family_creator(family_id, auth.uid())
   );
 
 -- Relationship roles table RLS policies
 CREATE POLICY "Users can view relationship roles"
   ON relationship_roles FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM family_members WHERE family_id = relationship_roles.family_id AND user_id = auth.uid())
-  );
+  USING (is_family_member(family_id, auth.uid()));
 
 CREATE POLICY "Family admins can manage relationship roles"
   ON relationship_roles FOR ALL
   USING (
-    EXISTS (SELECT 1 FROM family_members WHERE family_id = relationship_roles.family_id AND user_id = auth.uid() AND role = 'admin')
+    check_family_role(family_id, auth.uid(), 'admin')
+    OR is_family_creator(family_id, auth.uid())
   );
 
 -- People table RLS policies
 CREATE POLICY "Users can view their own family members"
   ON people FOR SELECT
-  USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()));
+  USING (auth.uid() = user_id OR (family_id IS NOT NULL AND is_family_member(family_id, auth.uid())));
 
 CREATE POLICY "Users can insert family members"
   ON people FOR INSERT
   WITH CHECK (
     auth.uid() = user_id
-    OR (family_id IS NOT NULL AND EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()))
+    OR (family_id IS NOT NULL AND is_family_member(family_id, auth.uid()))
   );
 
 CREATE POLICY "Users can update family members"
   ON people FOR UPDATE
   USING (
     auth.uid() = user_id
-    OR (family_id IS NOT NULL AND EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()))
+    OR (family_id IS NOT NULL AND is_family_member(family_id, auth.uid()))
   );
 
 CREATE POLICY "Users can delete family members"
   ON people FOR DELETE
   USING (
     auth.uid() = user_id
-    OR (family_id IS NOT NULL AND EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()))
+    OR (family_id IS NOT NULL AND is_family_member(family_id, auth.uid()))
   );
 
 -- Family trees RLS policies

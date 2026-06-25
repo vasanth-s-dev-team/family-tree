@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createClient } from '@/lib/supabase'
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { Suspense } from 'react'
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -36,6 +37,7 @@ export default function AcceptInvitePage() {
         .from('family_tree_invitations')
         .select(`
           id,
+          family_id,
           invited_email,
           relationship_type,
           status,
@@ -219,5 +221,22 @@ export default function AcceptInvitePage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 flex flex-col items-center gap-4">
+            <Loader className="w-8 h-8 animate-spin text-blue-600" />
+            <p>Loading invitation...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <AcceptInviteContent />
+    </Suspense>
   )
 }
