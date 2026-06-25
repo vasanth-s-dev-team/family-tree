@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Plus, LogOut } from "lucide-react"
+import { Users, Plus, LogOut, Link as LinkIcon } from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { PersonForm } from "./person-form"
 import { FamilyTreeView } from "./family-tree-view"
+import { RelationshipManager } from "./relationship-manager"
 
 export function FamilyTreeDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState("dashboard")
@@ -84,9 +85,10 @@ export function FamilyTreeDashboard({ user }: { user: any }) {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="add">Add Member</TabsTrigger>
+            <TabsTrigger value="relationships">Relationships</TabsTrigger>
             <TabsTrigger value="tree">Family Tree</TabsTrigger>
           </TabsList>
 
@@ -157,6 +159,10 @@ export function FamilyTreeDashboard({ user }: { user: any }) {
                 <PersonForm onSuccess={handleAddPerson} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="relationships">
+            <RelationshipManager />
           </TabsContent>
 
           <TabsContent value="tree">

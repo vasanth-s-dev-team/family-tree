@@ -1,7 +1,42 @@
+-- Create families table for collaborative family management
+CREATE TABLE IF NOT EXISTS families (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_code VARCHAR(50) UNIQUE NOT NULL, -- Easy to share: "SMITH-2024"
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_by UUID NOT NULL REFERENCES auth.users(id),
+  visibility VARCHAR(20) DEFAULT 'private', -- private, shared, public
+  is_public BOOLEAN DEFAULT FALSE,
+  public_url_slug VARCHAR(255) UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create family_members table to track which users belong to families
+CREATE TABLE IF NOT EXISTS family_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role VARCHAR(50) DEFAULT 'member', -- admin, editor, member
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(family_id, user_id)
+);
+
+-- Create relationship_roles table for defining relationship types
+CREATE TABLE IF NOT EXISTS relationship_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  role_name VARCHAR(100) NOT NULL, -- father, mother, son, daughter, uncle, aunt, grandfather, etc.
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(family_id, role_name)
+);
+
 -- Create people table
 CREATE TABLE IF NOT EXISTS people (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  family_id UUID REFERENCES families(id) ON DELETE CASCADE, -- Link to collaborative family
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
   date_of_birth DATE,
@@ -62,11 +97,14 @@ CREATE TABLE IF NOT EXISTS family_tree_collaborators (
 CREATE TABLE IF NOT EXISTS family_tree_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   family_tree_id UUID NOT NULL REFERENCES family_trees(id) ON DELETE CASCADE,
+  family_id UUID REFERENCES families(id) ON DELETE CASCADE, -- For collaborative families
   invited_by UUID NOT NULL REFERENCES auth.users(id),
   invited_email VARCHAR(255) NOT NULL,
   role VARCHAR(20) DEFAULT 'viewer',
+  relationship_type VARCHAR(100), -- uncle, aunt, father, mother, etc.
   token VARCHAR(255) UNIQUE NOT NULL,
   expires_at TIMESTAMP NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, rejected
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(family_tree_id, invited_email)
 );
@@ -97,6 +135,9 @@ CREATE TABLE IF NOT EXISTS custom_field_templates (
 );
 
 -- Enable Row Level Security
+ALTER TABLE families ENABLE ROW LEVEL SECURITY;
+ALTER TABLE family_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE relationship_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_trees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_tree_collaborators ENABLE ROW LEVEL SECURITY;
@@ -104,22 +145,78 @@ ALTER TABLE family_tree_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sharing_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE custom_field_templates ENABLE ROW LEVEL SECURITY;
 
+-- Families table RLS policies
+CREATE POLICY "Users can view their families"
+  ON families FOR SELECT
+  USING (
+    created_by = auth.uid()
+    OR EXISTS (SELECT 1 FROM family_members WHERE family_id = families.id AND user_id = auth.uid())
+    OR is_public = TRUE
+  );
+
+CREATE POLICY "Users can create families"
+  ON families FOR INSERT
+  WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Family admins can update families"
+  ON families FOR UPDATE
+  USING (
+    created_by = auth.uid()
+    OR EXISTS (SELECT 1 FROM family_members WHERE family_id = families.id AND user_id = auth.uid() AND role = 'admin')
+  );
+
+-- Family members table RLS policies
+CREATE POLICY "Users can view family members"
+  ON family_members FOR SELECT
+  USING (
+    user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM family_members fm2 WHERE fm2.family_id = family_members.family_id AND fm2.user_id = auth.uid())
+  );
+
+CREATE POLICY "Family admins can manage members"
+  ON family_members FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM family_members WHERE family_id = family_members.family_id AND user_id = auth.uid() AND role = 'admin')
+  );
+
+-- Relationship roles table RLS policies
+CREATE POLICY "Users can view relationship roles"
+  ON relationship_roles FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM family_members WHERE family_id = relationship_roles.family_id AND user_id = auth.uid())
+  );
+
+CREATE POLICY "Family admins can manage relationship roles"
+  ON relationship_roles FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM family_members WHERE family_id = relationship_roles.family_id AND user_id = auth.uid() AND role = 'admin')
+  );
+
 -- People table RLS policies
 CREATE POLICY "Users can view their own family members"
   ON people FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()));
 
-CREATE POLICY "Users can insert their own family members"
+CREATE POLICY "Users can insert family members"
   ON people FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    OR (family_id IS NOT NULL AND EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()))
+  );
 
-CREATE POLICY "Users can update their own family members"
+CREATE POLICY "Users can update family members"
   ON people FOR UPDATE
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id
+    OR (family_id IS NOT NULL AND EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()))
+  );
 
-CREATE POLICY "Users can delete their own family members"
+CREATE POLICY "Users can delete family members"
   ON people FOR DELETE
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id
+    OR (family_id IS NOT NULL AND EXISTS (SELECT 1 FROM family_members WHERE family_id = people.family_id AND user_id = auth.uid()))
+  );
 
 -- Family trees RLS policies
 CREATE POLICY "Users can view their own trees"

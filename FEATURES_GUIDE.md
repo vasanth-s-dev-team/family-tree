@@ -77,9 +77,9 @@ Share your family tree with one click on:
 ### Generated Share Link
 
 Each family tree gets a unique shareable URL:
-```
+\`\`\`
 https://familytree.app/family-tree/my-family-tree-abc123
-```
+\`\`\`
 
 ---
 
@@ -164,7 +164,7 @@ When viewing a public family tree via link, visitors can see:
 **GET** `/api/public-family-tree/[slug]`
 
 Returns public family tree data:
-```json
+\`\`\`json
 {
   "name": "Smith Family Tree",
   "description": "Our family genealogy",
@@ -182,13 +182,13 @@ Returns public family tree data:
     }
   ]
 }
-```
+\`\`\`
 
 ### Embed Public Trees
 
 You can embed family trees on external websites using an iframe:
 
-```html
+\`\`\`html
 <iframe 
   src="https://familytree.app/family-tree/my-family-tree-abc123"
   width="100%"
@@ -196,7 +196,7 @@ You can embed family trees on external websites using an iframe:
   frameborder="0"
   allow="fullscreen"
 ></iframe>
-```
+\`\`\`
 
 ---
 
@@ -252,11 +252,11 @@ New columns added:
 
 Run the SQL migration to add new tables and columns:
 
-```bash
+\`\`\`bash
 # Copy SQL from scripts/create-tables.sql
 # Paste in Supabase SQL Editor
 # Run all queries
-```
+\`\`\`
 
 ### Step 2: Install Components
 
@@ -269,9 +269,9 @@ The following components are already created:
 ### Step 3: Update Main Dashboard
 
 Add settings tab to your main dashboard to include:
-```tsx
+\`\`\`tsx
 <FamilyTreeSettings />
-```
+\`\`\`
 
 ---
 
